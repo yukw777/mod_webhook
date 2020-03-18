@@ -1,0 +1,27 @@
+#!/bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+# run ejabberd
+docker run --rm -d --name ejabberd \
+-v $DIR/ejabberd.yml:/home/ejabberd/conf/ejabberd.yml \
+-v $DIR:/home/ejabberd/mod_webhook \
+-p 5222:5222 -p 5280:5280 \
+ejabberd/ecs
+
+
+# sleep for 3 seconds to wait for ejabberd to come up
+echo "Sleeping for 3 seconds for ejabberd to come up"
+sleep 3
+
+# create some users
+docker exec ejabberd bin/ejabberdctl register peter localhost 123123
+docker exec ejabberd bin/ejabberdctl register david localhost 123123
+
+# create a symlink to the module folder
+# this is b/c when you mount a volume, it's created for the root user.
+docker exec ejabberd mkdir -p /home/ejabberd/.ejabberd-modules/sources
+docker exec ejabberd ln -s /home/ejabberd/mod_webhook /home/ejabberd/.ejabberd-modules/sources/mod_webhook
+
+# check mod_webhook
+docker exec ejabberd bin/ejabberdctl module_check mod_webhook
